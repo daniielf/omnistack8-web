@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import io from 'socket.io-client';
 import './Main.css';
 
 import api from '../services/api';
@@ -6,17 +7,34 @@ import api from '../services/api';
 import logo from '../assets/logo.svg';
 import dislike from '../assets/dislike.svg';
 import like from '../assets/like.svg';
+import matchLogo from '../assets/itsamatch@3x.png';
+
 
 export default function Main({ match }) {
     const [usersList, setList] = useState([]);
-
+    const [userMatch, setMatch] = useState(null);
     useEffect(() => { 
         async function loadUsers() {
             const response = await api.get('devs/' + match.params.id + '/list');
             setList(response.data.list);
         }
         loadUsers();
-    }, [match.params.username] )
+    }, [match.params.id] );
+
+    useEffect(() => {
+        const socket = io('http://localhost:3333', {
+            query: { user_id: match.params.id }
+        });
+
+        socket.on('match', (user) => {
+            userGotAMatch(user);
+        });
+    }, [match.params.id]);
+
+    function userGotAMatch(target) {
+        console.log('NEW MATCH', target);
+        setMatch(target);
+    }
 
     async function handleLike(targetId) {
         const like = await api.post('devs/likes', {
@@ -40,8 +58,20 @@ export default function Main({ match }) {
         }
     }
 
+    function dismissMatch() {
+        setMatch(null);
+    }
+
     return (
         <div className="main-container">
+            { userMatch && (
+                <div className="its-a-match">
+                    <img width="200px" src={matchLogo} alt="Its a Match!"></img>
+                    <img className="match-avatar" src={userMatch.avatar} alt="Its a Match!"></img>
+                    <span className="match-user-name">{userMatch.name}</span>
+                    <button className="close-match-window-text" onClick={dismissMatch}>Fechar</button>
+                </div>
+            )}
             <img src={logo} alt="TinDev Logo" />
             
                 { usersList.length === 0 ? 
